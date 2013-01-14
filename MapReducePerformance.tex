@@ -1,0 +1,167 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%% This Beamer template was created by Cameron Bracken.
+%% Anyone can freely use or modify it for any purpose
+%% without attribution.
+%% 
+%% Last Modified: January 9, 2009
+%% 
+
+\documentclass[xcolor=x11names,compress]{beamer}
+
+%% General document %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{graphicx}
+\usepackage{tikz, amsmath, amsfonts, amsthm, amssymb}
+\usepackage{hyperref}
+\hypersetup{urlcolor=cyan}
+\usetikzlibrary{decorations.fractals}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+
+
+%% Beamer Layout %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\useoutertheme[subsection=false,shadow]{miniframes}
+\useinnertheme{default}
+\usefonttheme{serif}
+\usepackage{palatino}
+
+\setbeamerfont{title like}{shape=\scshape}
+\setbeamerfont{frametitle}{shape=\scshape}
+
+\setbeamercolor*{lower separation line head}{bg=DeepSkyBlue4} 
+\setbeamercolor*{normal text}{fg=black,bg=white} 
+\setbeamercolor*{alerted text}{fg=red} 
+\setbeamercolor*{example text}{fg=black} 
+\setbeamercolor*{structure}{fg=black} 
+
+\setbeamercolor*{palette tertiary}{fg=black,bg=black!10} 
+\setbeamercolor*{palette quaternary}{fg=black,bg=black!10} 
+
+\renewcommand{\(}{\begin{columns}}
+  \renewcommand{\)}{\end{columns}}
+\newcommand{\<}[1]{\begin{column}{#1}}
+  \renewcommand{\>}{\end{column}}
+\setbeamercovered{transparent}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+
+
+
+
+\begin{document}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\section{\scshape Introduction}
+\begin{frame}
+  \title{Improving MapReduce Job Performance through Better Algorithm Design}
+  \author{
+    Andrew Johnson\\
+    {\it Explorys}\\
+  }
+  \date{
+    \begin{tikzpicture}[decoration=Koch curve type 1] 
+      \draw[DeepSkyBlue4] decorate{ decorate{ decorate{ (0,0) -- (3,0) }}}; 
+    \end{tikzpicture}  
+    \\
+    \vspace{1cm}
+    \today
+  }
+  \titlepage
+\end{frame}
+
+\begin{frame}{Who am I?}
+  \begin{itemize}
+  \item Software engineer at Explorys
+  \item CWRU grad in Computer Science, May 2012
+  \end{itemize}
+\end{frame}
+
+\subsection{Overview}
+
+\begin{frame}{Overview}
+  \begin{itemize}
+  \item<1,2,3> You've got your cluster set up and configured well.
+  \item<2,3> You've written your MapReduce jobs.
+  \item<3> But they are just not as fast as you'd like
+  \item<4> How do you take your MapReduce jobs to the next level?
+  \end{itemize}
+\end{frame}
+
+\section{\scshape Know Thyself}
+
+\subsection{Know Thyself}
+\begin{frame}{Know Thyself}
+  \begin{itemize}
+  \item<1> Understand your data!
+  \item<2,3> Understand the current performance characteristics of your jobs!
+  \item<3> Understand how much harder you can push your cluster!
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Understanding Your MapReduce Jobs}
+  \begin{itemize}
+  \item<1,2> You need to have some kind of monitoring in place (e.g. Ganglia)
+  \item<2,3> Your first task is to find out what is limiting the
+    performance of your job.
+  \item<3> Watch resource utilization during the time the job is
+    running; is it CPU, IO, or memory bound?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Disclaimer}
+  \begin{itemize}
+  \item<1,2> The algorithmic techniques in this presentation reduce IO
+    utilization at the cost of increased CPU and memory utilization in
+    the map tasks.
+  \item<2> While trying them out, continue to monitor resource
+    utilization. \bf{Bad things can happen if you don't!}
+  \item<3,4> I cannot guarantee that what I'm about to show you will
+    actually improve the performance of your jobs.
+  \item<4> Treat implementing these techniques as a science experiment.
+  \item<5> That said, I've had good results with these techniques, so
+    let's get to the fun stuff!
+  \end{itemize}
+\end{frame}
+
+\section{\scshape Local Aggregation}
+
+\subsection{Overview}
+\begin{frame}{Overview}
+  
+\end{frame}
+
+\subsection{Pairs}
+
+\subsection{Stripes}
+
+\section{\scshape Map-Only Jobs?!?}
+
+\subsection{Map-Only Jobs?!?}
+
+\section{\scshape Wrapping Up}
+
+\subsection{Other Resources}
+\begin{frame}{Other Resources}
+  \begin{itemize}
+  \item \emph{Data-Intensive Text Processing with MapReduce} by Jimmy
+    Lin and Chris Dyer
+  \end{itemize}
+  (\url{http://lintool.github.com/MapReduceAlgorithms/index.html})
+\end{frame}
+
+\subsection{Contact Information}
+\begin{frame}{Contact Information}
+  \begin{itemize}
+  \item E-mail: \href{mailto:andrew@andrewjamesjohnson.com}{andrew@andrewjamesjohnson.com}
+  \item Twitter: \href{http://twitter.com/theajsquared}{@theajsquared}
+  \item Slides are available at \href{}{my website}
+  \end{itemize}
+\end{frame}
+
+\subsection{Questions?}
+\begin{frame}
+  \Huge
+  Questions?
+\end{frame}
+
+
+\end{document}
