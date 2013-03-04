@@ -10,10 +10,11 @@
 
 %% General document %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage{graphicx}
-\usepackage{tikz, amsmath, amsfonts, amsthm, amssymb}
+\usepackage{tikz, amsmath, amsfonts, amsthm, amssymb, algorithm2e}
 \usepackage{hyperref}
 \hypersetup{urlcolor=cyan}
 \usetikzlibrary{decorations.fractals}
+\beamertemplatenavigationsymbolsempty
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
 
@@ -40,6 +41,14 @@
 \newcommand{\<}[1]{\begin{column}{#1}}
   \renewcommand{\>}{\end{column}}
 \setbeamercovered{transparent}
+\SetKwFor{Class}{Class}{}{end}
+\SetKwFor{Method}{Method}{}{end}
+\SetKw{Emit}{Emit}
+\SetKw{Size}{Size}
+\SetKw{Clear}{Clear}
+\SetKw{Near}{Neighbors}
+\SetKw{Flush}{Flush}
+\SetKw{Sum}{ElementSum}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
 
@@ -52,18 +61,17 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 \section{\scshape Introduction}
 \begin{frame}
-  \title{Improving MapReduce Job Performance through Better Algorithm Design}
+  \title{Using Local Aggregation in MapReduce Jobs}
   \author{
-    Andrew Johnson\\
-    {\it Explorys}\\
+    Andrew Johnson
   }
   \date{
-    \begin{tikzpicture}[decoration=Koch curve type 1] 
+    \begin{tikzpicture}[decoration=Koch curve type 2] 
       \draw[DeepSkyBlue4] decorate{ decorate{ decorate{ (0,0) -- (3,0) }}}; 
     \end{tikzpicture}  
     \\
     \vspace{1cm}
-    \today
+    March 25, 2013
   }
   \titlepage
 \end{frame}
@@ -109,7 +117,7 @@
 
 \begin{frame}{Disclaimer}
   \begin{itemize}
-  \item<1,2> The algorithmic techniques in this presentation reduce IO
+  \item<1,2> The algorithmic techniques in this presentation reduce network
     utilization at the cost of increased CPU and memory utilization in
     the map tasks.
   \item<2> While trying them out, continue to monitor resource
@@ -117,25 +125,219 @@
   \item<3,4> I cannot guarantee that what I'm about to show you will
     actually improve the performance of your jobs.
   \item<4> Treat implementing these techniques as a science experiment.
-  \item<5> That said, I've had good results with these techniques, so
-    let's get to the fun stuff!
+  \item<5> That said, I've had good results with these techniques.
   \end{itemize}
 \end{frame}
 
-\section{\scshape Local Aggregation}
+\section{\scshape In-Mapper Combining}
 
 \subsection{Overview}
-\begin{frame}{Overview}
-  
+\begin{frame}{Word Count}
+  \begin{algorithm}[H]
+    \Class{Mapper}{
+      \Method{Map(docid \emph{a}, doc \emph{d})}{
+        \ForEach{term t $\in$ doc d} {
+          \Emit{(term t, count 1)}
+        }
+      }
+    }
+    \Class{Reducer}{
+      \Method{Reduce(term \emph{t}, counts $[c_1,c_2,\ldots]$)}{
+        sum$\ \leftarrow 0$\\
+        \ForEach{count c $\in$ counts $[c_1,c_2,\ldots]$} {
+          sum$\ \leftarrow\ $ sum$\ +\ $c
+        }
+        \Emit{(term t, count sum)}
+      }
+    }
+  \end{algorithm}
+\end{frame}
+
+\subsection{Combiners}
+
+\begin{frame}
+  \frametitle{Combiners}
+  \begin{itemize}
+  \item<1> After monitoring this job, we want to improve its performance
+  \item<2> Why not try a combiner?
+  \item<3,4> No guarantee how often a combiner is called, if at all
+  \item<4> Using combiner still requires materializing all key-value pairs
+  \end{itemize}
+\end{frame}
+
+\subsection{Local Aggregation}
+
+\begin{frame}
+  \frametitle{In-Mapper Combining}
+  \begin{itemize}
+  \item<1> Move the combiner functionality into the mapper
+  \item<2,3> Provides total control over how and when combining takes place
+  \item<3> Materialize the minimum number of key-value pairs
+  \end{itemize}
+\end{frame}
+\begin{frame}
+  \frametitle{Word Count}
+  The reducer is the same as before
+  \begin{algorithm}[H]
+    \Class{Mapper}{
+      \Method{Setup}{
+        H$\ \leftarrow\ $ new Map$<$term$\ \rightarrow\ $ count$>$
+      }
+      \Method{Map(docid \emph{a}, doc \emph{d})}{
+        \ForEach{term t $\in$ doc d} {
+          H\{t\}$\ \leftarrow\ $ H\{t\}$\ +\ $1
+        }
+      }
+      \Method{Cleanup}{
+        \ForEach{term t $\in$ H} {
+          \Emit{(term t, count H\{t\})}
+        }
+      }
+    }
+  \end{algorithm}
+\end{frame}
+
+\subsection{Potential Issues}
+\begin{frame}
+  \frametitle{Potential Issues}
+  \begin{itemize}
+  \item<1,2> Preserving state across calls to \emph{Map} may cause bugs
+  \item<2> Order-dependent bugs are especially pernicious
+  \item<3,4> Memory usage is fundamental scalability issue
+  \item<4> Don't forget your monitoring!
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Dealing with Memory Usage}
+  \begin{itemize}
+  \item<1,2> Know your data and your grid!
+  \item<2> Memory usage may not be a problem
+  \item<3,4> Periodically flush intermediate key-value pairs
+  \item<4> Empirically discover balance between memory usage and
+    network utilization
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Word Count}
+  \scriptsize
+  \begin{algorithm}[H]
+    \Class{Mapper}{
+      \Method{Setup}{
+        H$\ \leftarrow\ $ new Map$<$term$\ \rightarrow\ $ count$>$\\
+        BufferSize$\ \leftarrow n$ 
+      }
+      \Method{Flush}{
+        \ForEach{term t $\in$ H} {
+          \Emit{(term t, count H\{t\})}
+        }
+        \Clear{(H})
+      }
+      \Method{Map(docid \emph{a}, doc \emph{d})}{
+        \ForEach{term t $\in$ doc d} {
+          H\{t\}$\ \leftarrow\ $ H\{t\}$\ +\ $1
+        }
+        \If{\Size{(H)} $\ \geq\ $ BufferSize} {
+          \Flush
+        }
+      }
+      \Method{Cleanup}{
+        \Flush
+      }
+    }
+  \end{algorithm}
+\end{frame}
+
+\section{\scshape Pairs and Stripes}
+
+\subsection{Overview}
+
+\begin{frame}
+  \frametitle{Overview}
+  \begin{itemize}
+  \item<1> In-mapper combining is not the only local aggregation technique
+  \item<2> For more complex problems, consider changing the
+    intermediate key-value types
+  \end{itemize}
 \end{frame}
 
 \subsection{Pairs}
+\begin{frame}
+  \frametitle{Pairs Approach to Word Co-Occurrence}
+  \small
+  \begin{algorithm}[H]
+    \Class{Mapper}{
+      \Method{Map(docid \emph{a}, doc \emph{d})}{
+        \ForEach{term w $\in$ doc d} {
+          \ForEach{term u $\in$ \Near{(w)}}{
+            \Emit{(pair (w,u), count 1)}
+          }
+        }
+      }
+    }
+    \Class{Reducer}{
+      \Method{Reduce(pair p, counts $[c_1,c_2,\ldots]$)}{
+        sum$\ \leftarrow 0$\\
+        \ForEach{count c $\in$ counts $[c_1,c_2,\ldots]$} {
+          sum$\ \leftarrow\ $ sum$\ +\ $c
+        }
+        \Emit{(pair p, count sum)}
+      }
+    }
+  \end{algorithm}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Improvements}
+  \begin{itemize}
+  \item<1,2> Can apply in-mapper combining
+  \item<2> There will still be a very large number of intermediate
+    key-value pairs
+  \item<3,4> What do you do if the shuffle phase is still the bottleneck?
+  \item<4> Change the structure of your key-value pairs!
+  \end{itemize}
+\end{frame}
 
 \subsection{Stripes}
 
-\section{\scshape Map-Only Jobs?!?}
+\begin{frame}
+  \frametitle{Stripes Approach to Word Co-Occurrence}
+  \footnotesize
+  \begin{algorithm}[H]
+    \Class{Mapper}{
+      \Method{Map(docid \emph{a}, doc \emph{d})}{
+        \ForEach{term w $\in$ doc d} {
+          H$\ \leftarrow\ $ new Map$<$term$\ \rightarrow\ $ count$>$\\
+          \ForEach{term u $\in$ \Near{(w)}}{
+            H\{u\}$\ \leftarrow\ $ H\{u\}$\ +\ $1
+          }
+          \Emit{(term w, stripe H)}
+        }
+      }
+    }
+    \Class{Reducer}{
+      \Method{Reduce(term w, stripes $[H_1,H_2,\ldots]$)}{
+        $H_f\leftarrow\ $ new Map$<$term$\ \rightarrow\ $ count$>$\\
+        \ForEach{stripe H $\in$ stripes $[H_1,H_2,\ldots]$} {
+          \Sum{($H_f$, H)}
+        }
+        \Emit{(term w, stripe $H_f$)}
+      }
+    }
+  \end{algorithm}
+\end{frame}
 
-\subsection{Map-Only Jobs?!?}
+\begin{frame}
+  \frametitle{Potential Issues}
+  \begin{itemize}
+  \item<1,2> Memory and CPU utilization will increase
+  \item<2> Emit less intermediate data at the cost of more expensive serialization
+  \item<3> Don't forget your monitoring!
+  \item<4> In-mapper combining and the flush technique may be used
+    with the stripes approach
+  \end{itemize}
+\end{frame}
 
 \section{\scshape Wrapping Up}
 
@@ -152,7 +354,6 @@
 \begin{frame}{Contact Information}
   \begin{itemize}
   \item E-mail: \href{mailto:andrew@andrewjamesjohnson.com}{andrew@andrewjamesjohnson.com}
-  \item Twitter: \href{http://twitter.com/theajsquared}{@theajsquared}
   \item Slides are available at \href{}{my website} and
     \href{https://github.com/ajsquared/hadoop-slides}{on GitHub (\url{https://github.com/ajsquared/hadoop-slides})}
   \end{itemize}
